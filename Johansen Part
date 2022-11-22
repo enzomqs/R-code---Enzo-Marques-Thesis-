@@ -1,0 +1,191 @@
+# Johansen cointegration test 
+  
+library(urca)
+library(readxl)
+library(tseries)
+library(vars)
+
+Book1 <- MonthlyData2
+View(Book1)
+
+# Step 1 : Create a name for each variable 
+
+EURUSD <- Book1$`RER EURUSD %`
+#EU
+ConsumerConfEUR <- Book1$`Consumer Confid, Final EUR`
+CurrentAccountEUR <- Book1$`Current account EUR`
+EmploymentEUR <- Book1$`Unemployment EUR`
+TradeEUR <- Book1$`Trade EUR`
+IndustrialEUR <- Book1$`Industrial production EUR`
+PPIEUR <- Book1$`Producer price EUR`
+SalesEUR <- Book1$`Retail Sales EUR`
+YEUR <- Book1$`10 Y RATE EUR`
+BCERATE <- Book1$`Evolution Taux BCE`
+#US
+ConsumerConfUS <- Book1$`Consumer confidence US`
+CurrentAccountUS <- Book1$`Current account US`
+EmploymentUS <- Book1$`Unemployment US`
+TradeUS <- Book1$`Trade US`
+IndustrialUS <- Book1$`Industrial prod US`
+PPIUS <- Book1$`Producer price US`
+SalesUS <- Book1$`Retail Sales US`
+YUS <- Book1$`10 Y RATE US`
+FEDRATE <- Book1$`Evolution taux FED`
+
+#Step 2 : ADF TEST 
+
+adf.test(na.omit(EURUSD), alternative = "stationary", k = 60)
+adf.test(na.omit(ConsumerConfEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(ConsumerConfUS), alternative = "stationary", k = 60)
+adf.test(na.omit(CurrentAccountEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(CurrentAccountUS), alternative = "stationary", k = 60)
+adf.test(na.omit(EmploymentEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(EmploymentUS), alternative = "stationary", k = 60)
+adf.test(na.omit(TradeEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(TradeUS), alternative = "stationary", k = 60)
+adf.test(na.omit(IndustrialEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(IndustrialUS), alternative = "stationary", k = 60)
+adf.test(na.omit(PPIEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(PPIUS), alternative = "stationary", k = 60)
+adf.test(na.omit(SalesEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(SalesUS), alternative = "stationary", k = 60)
+adf.test(na.omit(YEUR), alternative = "stationary", k = 60)
+adf.test(na.omit(YUS), alternative = "stationary", k = 60)
+adf.test(na.omit(BCERATE), alternative = "stationary", k = 60)
+adf.test(na.omit(FEDRATE), alternative = "stationary", k = 60)
+
+#Step 3: Lag for VECM
+
+VARselect(c(na.omit(EURUSD),na.omit(ConsumerConfEUR),na.omit(ConsumerConfUS), na.omit(CurrentAccountEUR),
+            na.omit(CurrentAccountUS),na.omit(EmploymentEUR), na.omit(EmploymentUS),
+            na.omit(TradeEUR), na.omit(TradeUS), na.omit(IndustrialEUR), na.omit(IndustrialUS),
+            na.omit(PPIEUR),na.omit(PPIUS), na.omit(SalesEUR), na.omit(SalesUS),
+            na.omit(YEUR), na.omit(YUS),na.omit(BCERATE), na.omit(FEDRATE)), lag.max = 3)
+
+
+#Step 4 : specification de la composante déterministe d'un modèle VECM 
+lagmax <- 2
+
+#macro indicators EUR 
+
+summary(ca.jo(Book1[c("Current account EUR", 
+                      "Unemployment EUR", "Trade EUR", "Industrial production EUR",
+                      "Producer price EUR", "10 Y RATE EUR",
+                      "Evolution Taux BCE", "RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'trace'))
+
+summary(ca.jo(Book1[c("Current account EUR", 
+                      "Unemployment EUR", "Trade EUR", "Industrial production EUR",
+                      "Producer price EUR", "10 Y RATE EUR",
+                      "Evolution Taux BCE", "RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'eigen'))
+
+
+
+#macro indicators US 
+
+summary(ca.jo(Book1[c("Current account US",
+                      "Unemployment US", "Trade US", "Industrial prod US",
+                      "Producer price US", "10 Y RATE US",
+                      "Evolution taux FED","RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'trace'))
+
+summary(ca.jo(Book1[c("Current account US",
+                      "Unemployment US", "Trade US", "Industrial prod US",
+                      "Producer price US", "10 Y RATE US",
+                      "Evolution taux FED","RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'eigen'))
+
+#surveys indicators
+
+summary(ca.jo(Book1[c("Consumer Confid, Final EUR","Retail Sales EUR",
+                      "Consumer confidence US", "Retail Sales US",
+                      "RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'trace'))
+
+summary(ca.jo(Book1[c("Consumer Confid, Final EUR","Retail Sales EUR",
+                      "Consumer confidence US", "Retail Sales US",
+                      "RER EURUSD %")], K=lagmax, ecdet = 'const', type = 'eigen'))
+
+
+#ALL
+dset <- cbind(EURUSD, ConsumerConfEUR,CurrentAccountEUR, EmploymentEUR, TradeEUR, 
+              IndustrialEUR, PPIEUR, SalesEUR, YEUR,BCERATE,
+              ConsumerConfUS,CurrentAccountUS, EmploymentUS,TradeUS,
+              IndustrialUS,PPIUS, SalesUS, YUS, FEDRATE)
+
+ctest1t <- ca.jo(dset, type = "trace", ecdet = "const", K = lagmax)
+summary(ctest1t)
+
+
+#Etape 4 :Build the VECM Model
+
+Model1 <- VECM(na.omit(dset), 2, r = 18, estim =("2OLS"))
+summary(Model1)
+
+#Betas 
+BConsumerConfEUR <- 2.992398e-17 
+BCurrentAccountEUR <- 2.724058e-18
+BEmploymentEUR <- 4.440892e-16
+BTradeEUR <- 1.192622e-17
+BIndustrialEUR <- -1.387779e-16
+BPPIEUR <- -8.881784e-16
+BSalesEUR <- 2.775558e-16
+BYEUR <- 2.324529e-16
+BBCERATE <- 2.428613e-17
+BConsumerConfUS <- 1.387779e-16 
+BCurrentAccountUS  <- -2.032879e-19 
+BEmploymentUS <- -4.440892e-16
+BTradeUS  <- -9.627715e-17
+BIndustrialUS <- -2.220446e-16
+BPPIUS <- -1.387779e-16
+BSalesUS <- 6.661338e-16
+BYUS <- -1.838807e-16
+BFEDRATE <- -3.077773e-01
+
+library(data.table)
+setDT(Book1)
+Book1[, Prediction :=  BConsumerConfEUR * ConsumerConfEUR + BCurrentAccountEUR * CurrentAccountEUR + BEmploymentEUR * EmploymentEUR +
+     BTradeEUR * TradeEUR + BIndustrialEUR * IndustrialEUR + BPPIEUR * PPIEUR + BSalesEUR * SalesEUR + BYEUR * YEUR + 
+       BBCERATE * BCERATE + BConsumerConfUS * ConsumerConfUS + BCurrentAccountUS * CurrentAccountUS + BEmploymentUS * EmploymentUS+ 
+       BTradeUS * TradeUS + BIndustrialUS * IndustrialUS + BPPIUS * PPIUS + BSalesUS * SalesUS + BYUS * YUS + BFEDRATE * FEDRATE]
+View(Book1)
+library(openxlsx)
+
+#D) download the new excel for the creation of the predicated REER 
+write.xlsx(Book1,file = "writeXLSX3.xlsx")
+
+#Import new excel with modifications
+writeXLSX3 <- read_excel("writeXLSX3.xlsx")
+View(writeXLSX3)
+Book2 <- writeXLSX3
+
+plot(Book1$Period, Book1$`REER EURUSD`, type = 'l')
+lines(x = Book2$Period, y = Book2$`REER prediction`, type= "l", col = "red")
+
+#Diagnostic Tests
+#Need to Transform VECM to VAR
+
+Model1VAR <- vec2var(ctest1t, r = 18)
+
+#Serial Correlation
+
+Serial1 <- serial.test(Model1VAR, lags.pt = 2, type = "PT.asymptotic")
+Serial1
+
+
+#Normality of Residuals
+
+Norm1 <- normality.test(Model1VAR, multivariate.only = TRUE)
+Norm1
+
+# Forecasting 
+forecast <- predict(Model1VAR, n.ahed = 12, ci = 0.95)
+fanchart(forecast, names = "EURUSD", ylab = "Variation %", xlab = "Period")
+forecast
+
+fanchart()
+# plot forecast 
+Forecast <- read_excel("data/Forecast.xlsx")
+View(Forecast)
+
+ax <- plot(x = Forecast$Period, y = Forecast$`REER EURUSD`, type= "l", ylim=c(0.9,1.5), ylab = "EURUSD", xlab = "Period")
+lines(x = Forecast$Period, y = Forecast$`REER Fcst`, type = "l", col = "red")
+lines (x = Forecast$Period, y =Forecast$Observed, type = 'l', col = "blue")
+legend("topright", legend=c("EURUSD", "EURUSD Observed", "EURUSD BEER"),
+       col=c("black", "blue", "red"), lty=1, cex=0.8)
