@@ -1,0 +1,245 @@
+#OLS 
+
+library(readxl)
+library(stats)
+library(data.table)
+library(openxlsx)
+
+Book1 <- read_excel("data/MonthlyData2.xlsx")
+View(Book1)
+
+# Step 1 : Create a name for each variable 
+
+EURUSD <- Book1$`RER EURUSD %`
+#EU
+ConsumerConfEUR <- Book1$`Consumer Confid, Final EUR`
+CurrentAccountEUR <- Book1$`Current account EUR`
+EmploymentEUR <- Book1$`Unemployment EUR`
+TradeEUR <- Book1$`Trade EUR`
+IndustrialEUR <- Book1$`Industrial production EUR`
+PPIEUR <- Book1$`Producer price EUR`
+SalesEUR <- Book1$`Retail Sales EUR`
+YEUR <- Book1$`10 Y RATE EUR`
+BCERATE <- Book1$`Evolution Taux BCE`
+#US
+ConsumerConfUS <- Book1$`Consumer confidence US`
+CurrentAccountUS <- Book1$`Current account US`
+EmploymentUS <- Book1$`Unemployment US`
+TradeUS <- Book1$`Trade US`
+IndustrialUS <- Book1$`Industrial prod US`
+PPIUS <- Book1$`Producer price US`
+SalesUS <- Book1$`Retail Sales US`
+YUS <- Book1$`10 Y RATE US`
+FEDRATE <- Book1$`Evolution taux FED`
+
+# Step 2 : OLS 
+#A) General model with all variables 
+
+OLST <- lm(EURUSD ~  CurrentAccountEUR + EmploymentEUR + TradeEUR + 
+                        YEUR + BCERATE + CurrentAccountUS + EmploymentUS + TradeUS + YUS + FEDRATE + ConsumerConfEUR + ConsumerConfUS+ 
+             IndustrialEUR + PPIEUR + SalesEUR + IndustrialUS + PPIUS + SalesUS)
+summary(OLST)
+
+#Define all betas
+
+Intercept <--3.553e-03
+B1 <-3.644e-05
+B2<-1.264e-01
+B3<--3.033e-04
+B4<-1.754e-03
+B5<-3.813e-02
+B6<--2.645e-05
+B7<-1.089e-01
+B8 <- -2.900e-02
+B9 <-4.580e-02
+B10 <--8.833e-04
+B11<- 3.492e-03
+B12<- 4.933e-02
+B13 <- -2.283e-01
+B14 <- 6.871e-01
+B15 <-2.700e-01
+B16<- -2.100e-01
+B17 <- 8.527e-02
+B18 <-7.085e-01
+
+#Save the forecast of the first model 
+
+setDT(Book1)
+Book1[, PredictionT :=  Intercept + B1 * CurrentAccountEUR + B2 * EmploymentEUR + B3* TradeEUR + 
+        B4 * YEUR + B5 * BCERATE + B6 *  CurrentAccountUS + B7 * EmploymentUS + B8 * TradeUS + B9 * YUS + 
+        B10 * FEDRATE + B11 * ConsumerConfEUR + B12 *ConsumerConfUS+ 
+        B13 * IndustrialEUR + B14 * PPIEUR + B15 * SalesEUR + B16* IndustrialUS + B17 * PPIUS + B18 * SalesUS]
+View(Book1)
+
+#B) Separation of variables into two categories 
+#MACRO INDICATORS
+
+OLS1 <- lm(EURUSD ~  CurrentAccountEUR + EmploymentEUR + TradeEUR + 
+             YEUR + BCERATE + IndustrialEUR + PPIEUR + IndustrialUS + 
+             PPIUS + CurrentAccountUS + EmploymentUS + TradeUS + YUS + FEDRATE)
+summary(OLS1)
+
+#Define all betas
+
+Intercept2 <- -1.330e-03
+B11 <- 4.650e-05
+B22 <- 1.898e-01
+B33 <- -3.858e-05
+B44 <- -4.048e-03
+B55 <- 4.360e-02
+B66 <- -2.405e-01
+B77 <- 6.148e-01
+B88 <- -6.791e-02
+B99 <- 1.400e-01
+B100 <- -2.116e-05
+B111 <- 4.224e-02
+B112 <- -1.977e-02
+B113 <- 7.615e-02
+B114 <- 1.746e-03
+
+#Save it
+
+setDT(Book1)
+Book1[, PredictionMacro :=  Intercept2 + B11 * CurrentAccountEUR + B22 * EmploymentEUR + B33 * TradeEUR + 
+        B44 * YEUR + B55 * BCERATE + B66 * IndustrialEUR + B77 * PPIEUR + B88 * IndustrialUS + 
+        B99 * PPIUS + B100 * CurrentAccountUS + B111 * EmploymentUS + B112 * TradeUS + B113 * YUS + B114* FEDRATE]
+View(Book1)
+
+#SURVEYS INDICATORS 
+
+OLS2 <- lm(EURUSD ~ ConsumerConfEUR + SalesEUR + ConsumerConfUS + SalesUS )
+summary(OLS2)
+
+#Save it with Betas
+
+setDT(Book1)
+Book1[, PredictionSurveys :=  -0.002785 + 0.003225 * ConsumerConfEUR + 0.283697 * SalesEUR + 0.045354 * ConsumerConfUS + 0.746574 * SalesUS]
+View(Book1)
+
+# C) Diagnostics
+
+# Linearity of the data
+plot(OLST, 1, main = "Residuals vs Fitted OLS n°1")
+plot(OLS1, 1, main = "Residuals vs Fitted OLS n°2")
+plot(OLS2, 1, main = "Residuals vs Fitted OLS n°3")
+
+# Homogeneity of variance
+plot(OLST, 3, main = "Scale-Location OLS n°1")
+plot(OLS1, 3, main = "Scale-Location OLS n°2")
+plot(OLS2, 3, main = "Scale-Location OLS n°3")
+
+# Normality of residuals
+plot(OLST,2, main = "Normality of residuals OLS n°1")
+plot(OLS1,2, main = "Normality of residuals OLS n°2")
+plot(OLS2,2, main = "Normality of residuals OLS n°3")
+
+# Outliers and High leverage points:
+plot(OLST,5, main = "High leverage points OLS n°1")
+plot(OLS1,5, main = "High leverage points OLS n°2")
+plot(OLS2,5, main = "High leverage points OLS n°3")
+
+# Cook's distance
+plot(OLST, 4)
+plot(OLS1, 4)
+plot(OLS3, 4)
+
+
+#D) download the new excel for the creation of the predicated REER 
+write.xlsx(Book1,file = "writeXLSX2.xlsx")
+
+#Import new excel with modifications
+OLS_Forecast <- read_excel("data/OLS Forecast.xlsx")
+View(OLS_Forecast)
+Book2 <- OLS_Forecast
+#Display the different predictions
+plot(y = Book1$`REER EURUSD`, x = Book1$Period, type = "l", ylab = "REER", xlab ="Period")
+lines(y = Book2$`Prediction T`, x = Book2$Period, type = "l", col = "red")
+lines (y = Book2$PredictionD, x = Book2$Period, type = "l", col = "blue")
+legend("topright",
+       c("REER","Prediction T", "Prediction D"),
+       fill=c("black","blue","red")
+)
+
+#E) Improvement of the model that fits the most by creating lag 
+
+EURUSDLag <- lag(Book1$`RER EURUSD %`,1)
+
+# E) 1- OLS1 Lag
+OLS1Lag <- lm(EURUSDLag ~  CurrentAccountEUR + EmploymentEUR + TradeEUR + 
+             YEUR + BCERATE + IndustrialEUR + PPIEUR + IndustrialUS + 
+             PPIUS + CurrentAccountUS + EmploymentUS + TradeUS + YUS + FEDRATE)
+summary(OLS1Lag)
+
+#US PPI, US Current Account and FED seem to be 1 period behind
+
+PPIUSLag <- lag(Book1$`Producer price US`,1)
+CurrentAccountUSLag <- lag(Book1$`Current account US`,1)
+FEDRATELag <- lag(Book1$`Evolution taux FED`,1)
+  
+OLS1Lag2 <- lm(EURUSD~  CurrentAccountEUR + EmploymentEUR + TradeEUR + 
+                YEUR + BCERATE + IndustrialEUR + PPIEUR + IndustrialUS + 
+                PPIUSLag + CurrentAccountUSLag + EmploymentUS + TradeUS + YUS + FEDRATELag)
+summary(OLS1Lag2) #OLS1Lag have better results 
+
+#E) 2- OLS2 Lag
+
+OLS2Lag <- lm(EURUSDLag ~ ConsumerConfEUR + SalesEUR + ConsumerConfUS + SalesUS )
+summary(OLS2Lag)
+
+#US variables seem to be 1 period behind
+
+ConsumerConfEURLag <- lag(Book1$`Consumer Confid, Final EUR`,1)
+SalesEURLag <- lag(Book1$`Retail Sales EUR`, 1)
+
+OLS2Lag2 <- lm(EURUSD ~ ConsumerConfEURLag + SalesEURLag + ConsumerConfUS + SalesUS )
+summary(OLS2Lag2)
+
+#Final model : OLS1 Lag 1 and OLS2 without Lag 
+#Save it with Betas
+setDT(Book1)
+Book1[, PredictionOLS1Lag :=  1.810e-03 + 2.440e-05 * CurrentAccountEUR + -1.099e-01 * EmploymentEUR + -4.854e-04 * TradeEUR + 
+        4.798e-03 * YEUR + -8.136e-03 * BCERATE + -1.168e-01 * IndustrialEUR + -1.350e-01 * PPIEUR + -5.576e-01 * IndustrialUS + 
+        8.975e-01 * PPIUS + 6.303e-05 * CurrentAccountUS + 6.836e-04 * EmploymentUS + 5.475e-03 * TradeUS + -4.179e-02 * YUS + -2.829e-02* FEDRATE]
+View(Book1)
+
+
+# Diagnostics new model 
+# Linearity of the data
+plot(OLS1Lag, 1, main = "Residuals vs Fitted OLS n°1 with Lag")
+
+# Homogeneity of variance
+plot(OLS1Lag, 3, main = "Scale-Location OLS n°1 with Lag")
+
+# Normality of residuals
+plot(OLS1Lag,2, main = "Normality of residuals OLS n°1 with Lag")
+
+# Outliers and High leverage points:
+plot(OLS1Lag,5, main = "High leverage points OLS n°1 with Lag")
+
+
+#D) download the last excel for the creation of the predicated REER 
+write.xlsx(Book1,file = "writeXLSX2.xlsx")
+
+#Import new excel with modifications
+OLS_Forecast <- read_excel("data/OLS Forecast.xlsx")
+View(OLS_Forecast)
+Book3 <- OLS_Forecast
+#Display the different predictions
+plot(y = Book1$`REER EURUSD`, x = Book1$Period, type = "l", ylab = "REER EURUSD", xlab = "Period")
+lines(y = Book3$PredictionD, x = Book3$Period, type = "l", col = "red")
+legend("topright",
+       c("REER","Prediction from 1st model"),
+       fill=c("black","red")
+)
+
+plot(y = Book1$`REER EURUSD`, x = Book1$Period, type = "l", ylab = "REER EURUSD", xlab = "Period")
+lines (y = Book3$`REER OLSLag`, x = Book2$Period, type = "l", col = "blue")
+legend("topright",
+       c("REER","Prediction Final"),
+       fill=c("black","blue")
+)
+
+
+
+
+
